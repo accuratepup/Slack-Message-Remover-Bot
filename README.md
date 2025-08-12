@@ -1,6 +1,6 @@
 # Slack Message Deletion Bot
 
-A powerful Slack bot that allows workspace administrators to silently delete any message from any user through a simple right-click action. Regular users can delete their own messages.
+A powerful Slack bot that allows workspace administrators to delete messages and replies through multiple methods: right-click shortcuts for individual messages and slash commands for time-based bulk deletion. Features comprehensive time format support and silent operation.
 
 ## ✨ Features
 
@@ -11,6 +11,10 @@ A powerful Slack bot that allows workspace administrators to silently delete any
 - **⚡ Real-time**: Uses Socket Mode for instant responses
 - **🛡️ Smart Permissions**: Automatically detects user roles and permissions
 - **📝 Detailed Logging**: Comprehensive logging for debugging and monitoring
+- **💬 Slash Command**: Use `/remove-messages` with flexible time formats
+- **⏰ Time-Based Bulk Deletion**: Remove all messages from specified time periods
+- **🎯 Comprehensive Formats**: Supports 1H, 2D, 30M, 1 hour, 2 days, etc.
+- **🔗 Reply Deletion**: Automatically removes message threads and replies
 
 ## 🚀 Quick Start
 
@@ -144,18 +148,62 @@ python app.py
 
 ## 🎯 How to Use
 
-### For Workspace Admins
+### Method 1: Right-Click Shortcut (Individual Messages)
+
+#### For Workspace Admins
 
 1. **Right-click any message** (or click the three dots ⋯)
 2. **Select "Remove Message & Replies"**
 3. **Message disappears instantly** - no confirmation needed
 4. **All replies are also deleted**
 
-### For Regular Users
+#### For Regular Users
 
 1. **Right-click your own message**
 2. **Select "Remove Message & Replies"** 
 3. **Your message disappears** - only works on your own messages
+
+### Method 2: Slash Command (Bulk Time-Based Deletion)
+
+#### Using `/remove-messages`
+
+**Basic Usage:**
+```
+/remove-messages <time_period>
+```
+
+**Examples:**
+```bash
+/remove-messages 2H              # Remove messages from last 2 hours
+/remove-messages 1D              # Remove messages from last 1 day  
+/remove-messages 30M             # Remove messages from last 30 minutes
+/remove-messages 1 hour          # Remove messages from last 1 hour
+/remove-messages 2 days          # Remove messages from last 2 days
+/remove-messages                 # Show help (no parameters)
+```
+
+**Supported Time Formats:**
+- **Concise**: `30M`, `2H`, `1D` (minutes, hours, days)
+- **Alternative**: `30m`, `2h`, `1d` (lowercase also works)
+- **Full Words**: `30 minutes`, `2 hours`, `1 day`
+- **Abbreviated**: `30 min`, `2 hour`, `1 d`
+
+**Key Features:**
+- ✅ **Bulk time-based deletion** - removes all messages from specified period
+- ✅ **Includes all replies** - deletes message threads completely
+- ✅ **Silent operation** - no confirmation messages on success
+- ✅ **Smart timing** - includes messages sent right before command
+- ✅ **Same permission rules** as right-click method
+- ✅ **Built-in help** - run without parameters to see usage guide
+- ✅ **Error handling** - clear messages only when something goes wrong
+- ✅ **Current channel only** - operates on the channel where command is used
+
+**Permissions:**
+- **Admins**: Can remove any messages and replies from the time period
+- **Regular Users**: Can only remove their own messages and replies from the time period
+
+**Getting Help:**
+Simply run `/remove-messages` without any parameters to see the built-in help with examples and format options.
 
 ### Check Your Permissions
 
