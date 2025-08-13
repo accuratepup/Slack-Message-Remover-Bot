@@ -58,37 +58,85 @@ python app.py
 
 ## 🔐 Slack App Configuration
 
-### Step 1: Create Your Slack App
+Choose one of the two setup methods below. The **App Manifest method is strongly recommended** as it automatically configures everything for you.
 
-**Option A: Using App Manifest (Recommended)**
+---
+
+## 🚀 Method 1: App Manifest Setup (Recommended)
+
+The fastest and most reliable way to set up your Slack app. This method uses the included `manifest.json` file to automatically configure all settings.
+
+### Step 1: Create App from Manifest
+
 1. Go to [api.slack.com/apps](https://api.slack.com/apps)
 2. Click **"Create New App"** → **"From an app manifest"**
 3. Select your workspace
-4. Copy and paste the contents of `manifest.json` from this repository
-5. Review the configuration and click **"Create"**
+4. Choose **JSON** format
+5. Copy and paste the **entire contents** of [`manifest.json`](manifest.json) from this repository
+6. Review the configuration and click **"Create"**
+7. ✅ **Done!** Your app is now configured with all necessary settings
 
-**Option B: Manual Setup**
-1. Go to [api.slack.com/apps](https://api.slack.com/apps)
-2. Click **"Create New App"** → **"From scratch"**
-3. Name your app (e.g., "Message Remover Bot") and select your workspace
+### Step 2: Generate App-Level Token
 
-### Step 2: Configure Socket Mode (Manual Setup Only)
+1. Go to **Basic Information** → **App-Level Tokens**
+2. Click **"Generate Token and Scopes"**
+3. Configure the token:
+   - **Token Name**: `socket_token`
+   - **Scopes**: Select `connections:write`
+4. Click **"Generate"**
+5. **Copy the token** (starts with `xapp-`) → This is your `SLACK_APP_TOKEN`
 
-**Note**: If you used the app manifest, Socket Mode is already enabled. Skip to Step 5.
-
-1. Go to **Socket Mode** in the left sidebar
-2. **Enable Socket Mode**
-3. Create an **App-Level Token**:
-   - Token Name: `socket_token`
-   - Scopes: `connections:write`
-   - Copy the token (starts with `xapp-`) → This is your `SLACK_APP_TOKEN`
-
-### Step 3: Bot Token Scopes (Manual Setup Only)
-
-**Note**: If you used the app manifest, these scopes are already configured. Skip to Step 5.
+### Step 3: Install App & Get OAuth Tokens
 
 1. Go to **OAuth & Permissions**
-2. Scroll to **Bot Token Scopes** and add:
+2. Click **"Install to Workspace"**
+3. **Authorize the app** (review and accept permissions)
+4. Copy the tokens:
+   - **Bot User OAuth Token** (starts with `xoxb-`) → This is your `SLACK_BOT_TOKEN`
+   - **User OAuth Token** (starts with `xoxp-`) → This is your `SLACK_USER_TOKEN`
+
+### ✅ Manifest Setup Complete!
+
+Your app is now fully configured with:
+- ✅ Socket Mode enabled
+- ✅ All OAuth scopes configured
+- ✅ Message shortcut created
+- ✅ Slash command registered
+- ✅ Event subscriptions set up
+- ✅ Interactivity enabled
+
+**Next**: Add your tokens to the `.env` file and run the bot!
+
+---
+
+## 🛠️ Method 2: Manual Setup (Alternative)
+
+If you prefer to configure everything manually or need to customize settings, follow this step-by-step process.
+
+### Step 1: Create New App
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps)
+2. Click **"Create New App"** → **"From scratch"**
+3. Configure basic information:
+   - **App Name**: `Message Remover Bot`
+   - **Development Slack Workspace**: Select your workspace
+4. Click **"Create App"**
+
+### Step 2: Configure Socket Mode
+
+1. Go to **Socket Mode** in the left sidebar
+2. **Enable Socket Mode** (toggle on)
+3. Create an **App-Level Token**:
+   - Click **"Generate Token and Scopes"**
+   - **Token Name**: `socket_token`
+   - **Scopes**: Select `connections:write`
+   - Click **"Generate"**
+4. **Copy the token** (starts with `xapp-`) → This is your `SLACK_APP_TOKEN`
+
+### Step 3: Configure OAuth Scopes
+
+1. Go to **OAuth & Permissions** in the left sidebar
+2. Scroll to **Bot Token Scopes** and add these scopes:
    - `app_mentions:read` - Respond to @mentions
    - `chat:write` - Send messages and confirmations
    - `channels:read` - Access channel information
@@ -97,54 +145,71 @@ python app.py
    - `im:history` - Read direct message history
    - `mpim:history` - Read group DM history
    - `users:read` - Check user admin permissions
+   - `commands` - Handle slash commands
 
-### Step 4: User Token Scopes (Manual Setup Only)
-
-**Note**: If you used the app manifest, these scopes are already configured.
-
-1. Still in **OAuth & Permissions**
-2. Scroll to **User Token Scopes** and add:
-   - `chat:write` - Delete messages as user
+3. Scroll to **User Token Scopes** and add these scopes:
+   - `chat:write` - Delete messages as user (critical for admin functionality)
    - `channels:history` - Access channel history
    - `groups:history` - Access private channel history
    - `im:history` - Access DM history
    - `mpim:history` - Access group DM history
 
-### Step 5: Install App & Get Tokens
+### Step 4: Install App & Get OAuth Tokens
 
-1. Click **"Install to Workspace"**
-2. Authorize the app
-3. Copy the **Bot User OAuth Token** (starts with `xoxb-`) → This is your `SLACK_BOT_TOKEN`
-4. Copy the **User OAuth Token** (starts with `xoxp-`) → This is your `SLACK_USER_TOKEN`
+1. Still in **OAuth & Permissions**
+2. Click **"Install to Workspace"**
+3. **Authorize the app** (review and accept permissions)
+4. Copy the tokens:
+   - **Bot User OAuth Token** (starts with `xoxb-`) → This is your `SLACK_BOT_TOKEN`
+   - **User OAuth Token** (starts with `xoxp-`) → This is your `SLACK_USER_TOKEN`
 
-**For App Manifest Users**: If you created the app using the manifest, you'll also need to generate an App-Level Token:
-1. Go to **Basic Information** → **App-Level Tokens**
-2. Click **"Generate Token and Scopes"**
-3. Token Name: `socket_token`
-4. Add Scope: `connections:write`
-5. Copy the token (starts with `xapp-`) → This is your `SLACK_APP_TOKEN`
+### Step 5: Configure Slash Commands
 
-### Step 6: Configure Message Action (Manual Setup Only)
+1. Go to **Slash Commands** in the left sidebar
+2. Click **"Create New Command"**
+3. Configure the command:
+   - **Command**: `/remove-messages`
+   - **Request URL**: Leave blank (Socket Mode handles this)
+   - **Short Description**: `Remove messages from a time period with flexible formats (1H, 2D, 30M, 1 hour, etc.)`
+   - **Usage Hint**: `<time_period>`
+4. Click **"Save"**
 
-**Note**: If you used the app manifest, the message shortcut is already configured. Skip to Step 7.
+### Step 6: Configure Message Shortcuts
 
-1. Go to **Interactivity & Shortcuts**
-2. **Enable Interactivity**
-3. Under **Shortcuts**, click **"Create New Shortcut"**
-4. Select **"On messages"**
-5. Configure:
+1. Go to **Interactivity & Shortcuts** in the left sidebar
+2. **Enable Interactivity** (toggle on)
+3. **Request URL**: Leave blank (Socket Mode handles this)
+4. Under **Shortcuts**, click **"Create New Shortcut"**
+5. Select **"On messages"**
+6. Configure the shortcut:
    - **Name**: `Remove Message & Replies`
-   - **Description**: `Silently remove this message and all replies`
+   - **Description**: `Silently remove this message and all its replies`
    - **Callback ID**: `delete-message-with-all-threads`
+7. Click **"Save"**
 
-### Step 7: Event Subscriptions (Manual Setup Only)
+### Step 7: Configure Event Subscriptions
 
-**Note**: If you used the app manifest, event subscriptions are already configured.
-
-1. Go to **Event Subscriptions**
-2. **Enable Events**
-3. Under **Subscribe to bot events**, add:
+1. Go to **Event Subscriptions** in the left sidebar
+2. **Enable Events** (toggle on)
+3. **Request URL**: Leave blank (Socket Mode handles this)
+4. Under **Subscribe to bot events**, click **"Add Bot User Event"**
+5. Add this event:
    - `app_mention` - Respond to @mentions
+6. Click **"Save Changes"**
+
+### Step 8: Configure App Home (Optional)
+
+1. Go to **App Home** in the left sidebar
+2. Configure settings:
+   - **Home Tab**: Disabled
+   - **Messages Tab**: Enabled
+   - **Allow users to send Slash commands and messages from the messages tab**: Enabled
+
+### ✅ Manual Setup Complete!
+
+Your app is now fully configured with all the same functionality as the manifest method.
+
+**Next**: Add your tokens to the `.env` file and run the bot!
 
 ## 🎯 How to Use
 

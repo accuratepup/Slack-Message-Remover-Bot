@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Message Remover Bot",
-    "description": "A powerful Slack bot for workspace administrators to delete messages and replies via right-click shortcut or time-based slash commands. Silent operation with comprehensive time format support.",
+    "description": "Delete messages and replies via right-click or slash commands. Silent operation for admins and users.",
     "background_color": "#FF4444",
     "long_description": "This bot provides comprehensive message management capabilities for Slack workspaces. Administrators can delete messages from any user, while regular users can delete their own messages. Features include: (1) Right-click shortcut for individual message deletion, (2) /remove-messages slash command for time-based bulk deletion with flexible formats (1H, 2D, 30M, etc.), (3) Automatic deletion of message replies, (4) Silent operation without confirmation messages, and (5) Smart permission handling with user token support."
   },
@@ -21,6 +21,14 @@
         "description": "Remove messages from a time period with flexible formats (1H, 2D, 30M, 1 hour, etc.)",
         "usage_hint": "<time_period>",
         "should_escape": false
+      }
+    ],
+    "shortcuts": [
+      {
+        "name": "Remove Message & Replies",
+        "type": "message",
+        "callback_id": "delete-message-with-all-threads",
+        "description": "Silently remove this message and all its replies"
       }
     ]
   },
@@ -53,19 +61,10 @@
       ]
     },
     "interactivity": {
-      "is_enabled": true,
-      "message_menu_options_enabled": true
+      "is_enabled": true
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": true,
     "token_rotation_enabled": false
-  },
-  "shortcuts": [
-    {
-      "name": "Remove Message & Replies",
-      "type": "message",
-      "callback_id": "delete-message-with-all-threads",
-      "description": "Silently remove this message and all its replies"
-    }
-  ]
+  }
 } 
