@@ -24,6 +24,61 @@ app = App(token=SLACK_BOT_TOKEN)
 # Create a separate client for user token operations
 user_client = WebClient(token=SLACK_USER_TOKEN) if SLACK_USER_TOKEN else None
 
+def format_time_period_for_display(text):
+    """Convert short time formats to full display format for notifications"""
+    text = text.strip()
+    
+    # Convert short formats to full formats (no spaces)
+    if re.match(r'^(\d+)[Dd]$', text):
+        number = re.match(r'^(\d+)[Dd]$', text).group(1)
+        return f"{number} day{'s' if int(number) != 1 else ''}"
+    elif re.match(r'^(\d+)[Hh]$', text):
+        number = re.match(r'^(\d+)[Hh]$', text).group(1)
+        return f"{number} hour{'s' if int(number) != 1 else ''}"
+    elif re.match(r'^(\d+)[Mm]$', text):
+        number = re.match(r'^(\d+)[Mm]$', text).group(1)
+        return f"{number} minute{'s' if int(number) != 1 else ''}"
+    
+    # Convert spaced formats to full formats
+    elif re.match(r'^(\d+)\s*[Dd]$', text):
+        number = re.match(r'^(\d+)\s*[Dd]$', text).group(1)
+        return f"{number} day{'s' if int(number) != 1 else ''}"
+    elif re.match(r'^(\d+)\s*[Hh]$', text):
+        number = re.match(r'^(\d+)\s*[Hh]$', text).group(1)
+        return f"{number} hour{'s' if int(number) != 1 else ''}"
+    elif re.match(r'^(\d+)\s*[Mm]$', text):
+        number = re.match(r'^(\d+)\s*[Mm]$', text).group(1)
+        return f"{number} minute{'s' if int(number) != 1 else ''}"
+    
+    # If it's already in full format, return as is
+    return text
+
+def get_invalid_time_format_error(command_text):
+    """Generate error message for invalid time format"""
+    return f"""❌ *Invalid time format: `{command_text}`*
+
+*Supported formats:*
+
+**Concise formats:**
+• `30M` - 30 minutes
+• `2H` - 2 hours  
+• `1D` - 1 day
+
+**Full word formats:**
+• `30 minutes` - 30 minutes
+• `2 hours` - 2 hours
+• `1 day` - 1 day
+
+**Examples:*
+• `/remove-orphaned-messages 2H`
+• `/remove-orphaned-messages 1D`
+• `/remove-orphaned-messages 30M`
+• `/remove-orphaned-messages 1 hour`
+• `/remove-orphaned-messages 2 days`
+
+*What you entered:* `{command_text}`
+*Try again with one of the formats above.*"""
+
 # Help text for the remove-orphaned-messages command
 REMOVE_ORPHANED_MESSAGES_HELP = """*🗑️ Remove Orphaned Messages Command Help*
 
@@ -322,7 +377,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
         command_text = command.get("text", "").strip()
         
         print(f"User: {user_id}, Channel: {channel_id}, Text: '{command_text}'")
-        logger.info(f"Remove messages command triggered by user {user_id} in channel {channel_id} with text: {command_text}")
+        logger.info(f"Remove orphaned messages command triggered by user {user_id} in channel {channel_id} with text: {command_text}")
         
         # Check user permissions
         try:
@@ -386,7 +441,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             client.chat_postEphemeral(
                 channel=channel_id,
                 user=user_id,
-                text="❌ Invalid time format. Use formats like: `2H`, `1D`, `30M` or `2 hours`, `1 day`, `30 minutes`"
+                text=get_invalid_time_format_error(command_text)
             )
             return
         
@@ -452,13 +507,13 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             # Debug: Show first few messages found
             messages_found = history_response.get('messages', [])
             if messages_found:
-                logger.info("Sample messages found:")
+                logger.info(f"Found {len(messages_found)} messages in time period")
                 for i, msg in enumerate(messages_found[:3]):  # Show first 3 messages
                     msg_time = datetime.fromtimestamp(float(msg.get('ts', 0)))
                     logger.info(f"  Message {i+1}: {msg.get('user', 'unknown')} at {msg_time} - {msg.get('text', '[no text]')[:50]}")
             else:
                 logger.info("No messages returned by API call")
-                # Let's also try without the oldest parameter to see if we get ANY messages
+                # Try without the oldest parameter to see if we get ANY messages
                 test_response = delete_client.conversations_history(channel=channel_id, limit=5)
                 logger.info(f"Test call (no time filter): {test_response.get('ok')}, Messages: {len(test_response.get('messages', []))}")
                 
@@ -504,19 +559,22 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             messages_to_process = history_response["messages"]
             
             if not messages_to_process:
+                display_time = format_time_period_for_display(command_text)
                 client.chat_postEphemeral(
                     channel=channel_id,
                     user=user_id,
-                    text=f"ℹ️ No messages found in the last {command_text}."
+                    text=f"ℹ️ No messages found in the last {display_time}."
                 )
                 return
             
-            logger.info(f"Found {len(messages_to_process)} messages from the last {command_text}")
+            display_time = format_time_period_for_display(command_text)
+            logger.info(f"Found {len(messages_to_process)} orphaned messages from the last {display_time}")
             
             successful_deletions = 0
             failed_deletions = 0
             skipped_deletions = 0
             total_processed = 0
+            orphaned_messages_found = 0
             
             # Process each message
             for msg in messages_to_process:
@@ -524,11 +582,12 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                 if msg.get("subtype") != "tombstone":
                     continue
 
+                orphaned_messages_found += 1
                 msg_ts = msg.get("ts", "")
                 msg_author = msg.get("user", "")
                 msg_text = msg.get("text", "")[:50] + "..." if msg.get("text") else "[no text]"
                 
-                logger.info(f"Processing message from {msg_author} at {msg_ts}: {msg_text}")
+                logger.info(f"Processing orphaned message from {msg_author} at {msg_ts}: {msg_text}")
                 
                 # Convert timestamp to readable format for debugging
                 try:
@@ -570,7 +629,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                     
                     if replies_response["ok"]:
                         messages_to_delete = replies_response["messages"]
-                        logger.info(f"Found {len(messages_to_delete)} messages to delete for thread {msg_ts} (including original)")
+                        logger.info(f"Found {len(messages_to_delete)} messages to delete for orphaned thread {msg_ts} (including original)")
                         
                         # Delete all messages in reverse order (replies first, then original)
                         thread_successful = 0
@@ -599,7 +658,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                                 )
                                 
                                 if delete_response["ok"]:
-                                    logger.info(f"Successfully deleted thread message with ts: {thread_msg_ts}")
+                                    logger.info(f"Successfully deleted orphaned thread message with ts: {thread_msg_ts}")
                                     thread_successful += 1
                                 else:
                                     error_msg = delete_response.get('error', 'Unknown error')
@@ -614,7 +673,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                         failed_deletions += thread_failed
                         
                     else:
-                        logger.error(f"Failed to get replies for {msg_ts}: {replies_response.get('error', 'Unknown error')}")
+                        logger.error(f"Failed to get replies for orphaned message {msg_ts}: {replies_response.get('error', 'Unknown error')}")
                         # Fallback: try to delete just the original message
                         try:
                             delete_response = delete_client.chat_delete(
@@ -623,19 +682,19 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                             )
                             
                             if delete_response["ok"]:
-                                logger.info(f"Successfully deleted message with ts: {msg_ts} (fallback)")
+                                logger.info(f"Successfully deleted orphaned message with ts: {msg_ts} (fallback)")
                                 successful_deletions += 1
                             else:
                                 error_msg = delete_response.get('error', 'Unknown error')
-                                logger.error(f"Failed to delete message with ts: {msg_ts}. Error: {error_msg}")
+                                logger.error(f"Failed to delete orphaned message with ts: {msg_ts}. Error: {error_msg}")
                                 failed_deletions += 1
                                 
                         except Exception as e:
-                            logger.error(f"Exception while deleting message {msg_ts}: {e}")
+                            logger.error(f"Exception while deleting orphaned message {msg_ts}: {e}")
                             failed_deletions += 1
                 
                 except Exception as e:
-                    logger.error(f"Error getting replies for {msg_ts}: {e}")
+                    logger.error(f"Error getting replies for orphaned message {msg_ts}: {e}")
                     # Fallback: try to delete just the original message
                     try:
                         delete_response = delete_client.chat_delete(
@@ -644,53 +703,66 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                         )
                         
                         if delete_response["ok"]:
-                            logger.info(f"Successfully deleted message with ts: {msg_ts} (exception fallback)")
+                            logger.info(f"Successfully deleted orphaned message with ts: {msg_ts} (exception fallback)")
                             successful_deletions += 1
                         else:
                             error_msg = delete_response.get('error', 'Unknown error')
-                            logger.error(f"Failed to delete message with ts: {msg_ts}. Error: {error_msg}")
+                            logger.error(f"Failed to delete orphaned message with ts: {msg_ts}. Error: {error_msg}")
                             failed_deletions += 1
                             
                     except Exception as delete_e:
-                        logger.error(f"Exception while deleting message {msg_ts}: {delete_e}")
+                        logger.error(f"Exception while deleting orphaned message {msg_ts}: {delete_e}")
                         failed_deletions += 1
             
+            # Check if any orphaned messages were found
+            if orphaned_messages_found == 0:
+                display_time = format_time_period_for_display(command_text)
+                client.chat_postEphemeral(
+                    channel=channel_id,
+                    user=user_id,
+                    text=f"ℹ️ No orphaned messages found in the last {display_time}."
+                )
+                return
+            
             # Log results and send confirmation
-            logger.info(f"Bulk deletion complete - Success: {successful_deletions}, Failed: {failed_deletions}, Skipped: {skipped_deletions}")
+            logger.info(f"Orphaned messages bulk deletion complete - Success: {successful_deletions}, Failed: {failed_deletions}, Skipped: {skipped_deletions}")
             
             # Send summary message only for errors or issues
             if successful_deletions == 0:
                 if skipped_deletions > 0:
+                    display_time = format_time_period_for_display(command_text)
                     if has_admin_perms and not user_client:
                         client.chat_postEphemeral(
                             channel=channel_id,
                             user=user_id,
-                            text=f"⚠️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {command_text}, but user token not configured. As an admin, you need a user token to delete messages from other users. See README for setup instructions."
+                            text=f"⚠️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but user token not configured. As an admin, you need a user token to delete messages from other users. See README for setup instructions."
                         )
                     elif not has_admin_perms:
                         client.chat_postEphemeral(
                             channel=channel_id,
                             user=user_id,
-                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {command_text}, but you can only delete your own messages. Only workspace admins can delete messages from other users."
+                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but you can only delete your own messages. Only workspace admins can delete messages from other users."
                         )
                     else:
                         client.chat_postEphemeral(
                             channel=channel_id,
                             user=user_id,
-                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {command_text}, but you don't have permission to delete them."
+                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but you don't have permission to delete them."
                         )
                 else:
+                    display_time = format_time_period_for_display(command_text)
                     client.chat_postEphemeral(
                         channel=channel_id,
                         user=user_id,
-                        text=f"❌ No messages could be deleted from the last {command_text}. Messages may be too old or you may not have sufficient permissions."
+                        text=f"❌ No messages could be deleted from the last {display_time}. Messages may be too old or you may not have sufficient permissions."
                     )
             # Only show message if there were significant failures
             elif failed_deletions > 0 and failed_deletions >= successful_deletions:
+                display_time = format_time_period_for_display(command_text)
                 client.chat_postEphemeral(
                     channel=channel_id,
                     user=user_id,
-                    text=f"⚠️ Some messages couldn't be deleted: {failed_deletions} failed, {successful_deletions} succeeded from the last {command_text}."
+                    text=f"⚠️ Some messages couldn't be deleted: {failed_deletions} failed, {successful_deletions} succeeded from the last {display_time}."
                 )
                 
         except Exception as e:
@@ -702,7 +774,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             )
         
     except Exception as e:
-        logger.error(f"Error handling remove-messages command: {e}")
+        logger.error(f"Error handling remove-orphaned-messages command: {e}")
         try:
             client.chat_postEphemeral(
                 channel=body.get("channel_id", ""),
