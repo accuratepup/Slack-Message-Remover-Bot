@@ -24,6 +24,31 @@ app = App(token=SLACK_BOT_TOKEN)
 # Create a separate client for user token operations
 user_client = WebClient(token=SLACK_USER_TOKEN) if SLACK_USER_TOKEN else None
 
+# Help text for the remove-orphaned-messages command
+REMOVE_ORPHANED_MESSAGES_HELP = """*🗑️ Remove Orphaned Messages Command Help*
+
+*Usage:*
+`/remove-orphaned-messages <time_period>`
+
+*Examples:*
+• `/remove-orphaned-messages 2H` - Remove orphaned messages from last 2 hours
+• `/remove-orphaned-messages 1D` - Remove orphaned messages from last 1 day
+• `/remove-orphaned-messages 30M` - Remove orphaned messages from last 30 minutes
+• `/remove-orphaned-messages 1 hour` - Remove orphaned messages from last 1 hour
+• `/remove-orphaned-messages 2 days` - Remove orphaned messages from last 2 days
+
+*Supported Formats:*
+• **Concise**: `30M`, `2H`, `1D` (minutes, hours, days)
+• **Full**: `30 minutes`, `2 hours`, `1 day`
+
+*What it does:*
+• Removes all orphaned messages from the specified time period in this channel
+• Admins can remove any orphaned messages
+• Regular users can only remove their own orphaned messages
+
+*Permissions:*
+"""
+
 print("🤖 Bot starting up...")
 print(f"Bot token configured: {'✅' if SLACK_BOT_TOKEN else '❌'}")
 print(f"App token configured: {'✅' if SLACK_APP_TOKEN else '❌'}")
@@ -316,29 +341,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
         
         # If no text provided, show help
         if not command_text:
-            help_text = """*🗑️ Remove Messages Command Help*
-
-*Usage:*
-`/remove-orphaned-messages <time_period>`
-
-*Examples:*
-• `/remove-orphaned-messages 2H` - Remove messages from last 2 hours
-• `/remove-orphaned-messages 1D` - Remove messages from last 1 day
-• `/remove-orphaned-messages 30M` - Remove messages from last 30 minutes
-• `/remove-orphaned-messages 1 hour` - Remove messages from last 1 hour
-• `/remove-orphaned-messages 2 days` - Remove messages from last 2 days
-
-*Supported Formats:*
-• **Concise**: `30M`, `2H`, `1D` (minutes, hours, days)
-• **Full**: `30 minutes`, `2 hours`, `1 day`
-
-*What it does:*
-• Removes all messages from the specified time period in this channel
-• Admins can remove any messages
-• Regular users can only remove their own messages
-
-*Permissions:*
-""" + ("✅ You have admin permissions - can remove any messages" if has_admin_perms else "👤 You can only remove your own messages")
+            help_text = REMOVE_ORPHANED_MESSAGES_HELP + ("✅ You have admin permissions - can remove any orphaned messages" if has_admin_perms else "👤 You can only remove your own orphaned messages")
             
             client.chat_postEphemeral(
                 channel=channel_id,
@@ -708,7 +711,6 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             )
         except:
             pass
-
 
 if __name__ == "__main__":
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
