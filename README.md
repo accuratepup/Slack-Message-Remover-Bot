@@ -11,7 +11,7 @@ A powerful Slack bot that allows workspace administrators to delete messages and
 - **⚡ Real-time**: Uses Socket Mode for instant responses
 - **🛡️ Smart Permissions**: Automatically detects user roles and permissions
 - **📝 Detailed Logging**: Comprehensive logging for debugging and monitoring
-- **💬 Slash Command**: Use `/remove-messages` with flexible time formats
+- **💬 Slash Command**: Use `/remove-orphaned-messages` with flexible time formats
 - **⏰ Time-Based Bulk Deletion**: Remove all messages from specified time periods
 - **🎯 Comprehensive Formats**: Supports 1H, 2D, 30M, 1 hour, 2 days, etc.
 - **🔗 Reply Deletion**: Automatically removes message threads and replies
@@ -168,7 +168,7 @@ If you prefer to configure everything manually or need to customize settings, fo
 1. Go to **Slash Commands** in the left sidebar
 2. Click **"Create New Command"**
 3. Configure the command:
-   - **Command**: `/remove-messages`
+   - **Command**: `/remove-orphaned-messages`
    - **Request URL**: Leave blank (Socket Mode handles this)
    - **Short Description**: `Remove messages from a time period with flexible formats (1H, 2D, 30M, 1 hour, etc.)`
    - **Usage Hint**: `<time_period>`
@@ -230,21 +230,21 @@ Your app is now fully configured with all the same functionality as the manifest
 
 ### Method 2: Slash Command (Bulk Time-Based Deletion)
 
-#### Using `/remove-messages`
+#### Using `/remove-orphaned-messages`
 
 **Basic Usage:**
 ```
-/remove-messages <time_period>
+/remove-orphaned-messages <time_period>
 ```
 
 **Examples:**
 ```bash
-/remove-messages 2H              # Remove messages from last 2 hours
-/remove-messages 1D              # Remove messages from last 1 day  
-/remove-messages 30M             # Remove messages from last 30 minutes
-/remove-messages 1 hour          # Remove messages from last 1 hour
-/remove-messages 2 days          # Remove messages from last 2 days
-/remove-messages                 # Show help (no parameters)
+/remove-orphaned-messages 2H              # Remove orphaned messages from last 2 hours
+/remove-orphaned-messages 1D              # Remove orphaned messages from last 1 day  
+/remove-orphaned-messages 30M             # Remove orphaned messages from last 30 minutes
+/remove-orphaned-messages 1 hour          # Remove orphaned messages from last 1 hour
+/remove-orphaned-messages 2 days          # Remove orphaned messages from last 2 days
+/remove-orphaned-messages                 # Show help (no parameters)
 ```
 
 **Supported Time Formats:**
@@ -254,7 +254,7 @@ Your app is now fully configured with all the same functionality as the manifest
 - **Abbreviated**: `30 min`, `2 hour`, `1 d`
 
 **Key Features:**
-- ✅ **Bulk time-based deletion** - removes all messages from specified period
+- ✅ **Bulk time-based deletion** - removes all orphaned messages from specified period
 - ✅ **Includes all replies** - deletes message threads completely
 - ✅ **Silent operation** - no confirmation messages on success
 - ✅ **Smart timing** - includes messages sent right before command
@@ -268,7 +268,7 @@ Your app is now fully configured with all the same functionality as the manifest
 - **Regular Users**: Can only remove their own messages and replies from the time period
 
 **Getting Help:**
-Simply run `/remove-messages` without any parameters to see the built-in help with examples and format options.
+Simply run `/remove-orphaned-messages` without any parameters to see the built-in help with examples and format options.
 
 ### Check Your Permissions
 
