@@ -21,6 +21,12 @@
         "description": "Remove messages from a time period with flexible formats (1H, 2D, 30M, 1 hour, etc.)",
         "usage_hint": "<time_period>",
         "should_escape": false
+      },
+      {
+        "command": "/remove-orphaned-messages",
+        "description": "Remove orphaned messages from a time period",
+        "usage_hint": "<time_period>",
+        "should_escape": false
       }
     ],
     "shortcuts": [
