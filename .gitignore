@@ -198,8 +198,7 @@ config.json
 secrets.json
 *.key
 *.pem
-.env.local
-.env.production
+.env.*
 
 # Logs
 logs/
