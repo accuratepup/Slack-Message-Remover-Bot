@@ -129,25 +129,18 @@ def handle_app_mention(body, say, client, logger):
         
         if is_primary_owner:
             status = "Primary Owner 👑"
-            if user_token_available:
-                permissions = "You can delete messages from anyone!"
-            else:
-                permissions = "You can delete messages from anyone! (User token needed for full functionality)"
         elif is_owner:
             status = "Owner 🔑"
-            if user_token_available:
-                permissions = "You can delete messages from anyone!"
-            else:
-                permissions = "You can delete messages from anyone! (User token needed for full functionality)"
         elif is_admin:
             status = "Admin ⚡"
-            if user_token_available:
-                permissions = "You can delete messages from anyone!"
-            else:
-                permissions = "You can delete messages from anyone! (User token needed for full functionality)"
         else:
             status = "Member 👤"
-            permissions = "You can only delete your own messages."
+        
+        # All users now have the same permissions - can attempt to delete any message
+        if user_token_available:
+            permissions = "You can delete messages from anyone!"
+        else:
+            permissions = "You can delete messages from anyone! (Limited by Slack API permissions)"
         
         say(f"Hello {name}! 👋\n\n**Your Status:** {status}\n**Delete Permissions:** {permissions}")
         
@@ -190,18 +183,18 @@ def handle_message_action(ack, body, client, logger):
             logger.error(f"Error checking user permissions: {e}")
             has_admin_perms = False
         
-        # Determine which client to use for deletion
-        if has_admin_perms and user_client:
-            # Use user token for admin operations
+        # Determine which client to use for deletion - prefer user token if available
+        if user_client:
+            # Use user token for enhanced deletion capabilities
             delete_client = user_client
-            logger.info("Using user token for admin deletion")
+            logger.info("Using user token for deletion")
         else:
             # Use bot token for regular operations
             delete_client = client
             logger.info("Using bot token for deletion")
         
-        # Check if this is the user's own message or if they have admin permissions
-        can_delete = (message_author == user_id) or has_admin_perms
+        # Allow all users to delete messages (not just their own or admin-only)
+        can_delete = True
         
         if not can_delete:
             client.chat_postEphemeral(
@@ -211,12 +204,12 @@ def handle_message_action(ack, body, client, logger):
             )
             return
         
-        # For admins without user token, show limitation message
-        if has_admin_perms and not user_client:
+        # For users without user token, show limitation message
+        if not user_client:
             client.chat_postEphemeral(
                 channel=channel_id,
                 user=user_id,
-                text="⚠️ Admin detected but user token not configured. You can only delete your own messages and bot messages. See README for user token setup."
+                text="⚠️ User token not configured. Bot will attempt to delete messages but may be limited by Slack API permissions. See README for user token setup."
             )
         
         # Get all replies to this message
@@ -240,11 +233,11 @@ def handle_message_action(ack, body, client, logger):
                     
                     # For each message, determine if we can delete it
                     if delete_client == user_client:
-                        # With user token, admins can delete any message
-                        can_delete_this = has_admin_perms
+                        # With user token, all users can delete any message
+                        can_delete_this = True
                     else:
-                        # With bot token, only own messages and bot messages
-                        can_delete_this = (msg_author == user_id) or (msg.get("bot_id") is not None)
+                        # With bot token, allow all users to delete any message (bot will handle what it can delete)
+                        can_delete_this = True
                     
                     if not can_delete_this:
                         logger.info(f"Skipping message {msg_ts} - insufficient permissions to delete message from user {msg_author}")
@@ -396,7 +389,7 @@ def handle_remove_messages_command(ack, body, client, logger, command):
         
         # If no text provided, show help
         if not command_text:
-            help_text = REMOVE_ORPHANED_MESSAGES_HELP + ("✅ You have admin permissions - can remove any orphaned messages" if has_admin_perms else "👤 You can only remove your own orphaned messages")
+            help_text = REMOVE_ORPHANED_MESSAGES_HELP + "✅ All users can attempt to remove orphaned messages from any user (success depends on Slack API permissions)"
             
             client.chat_postEphemeral(
                 channel=channel_id,
@@ -455,20 +448,20 @@ def handle_remove_messages_command(ack, body, client, logger, command):
         logger.info(f"Cutoff time: {cutoff_datetime} (timestamp: {cutoff_time}) - with 30s buffer")
         logger.info(f"Looking for messages newer than {cutoff_datetime} ({command_text} ago + 30s buffer)")
         
-        # Determine which client to use for deletion
-        if has_admin_perms and user_client:
+        # Determine which client to use for deletion - prefer user token if available
+        if user_client:
             delete_client = user_client
-            logger.info("Using user token for admin deletion")
+            logger.info("Using user token for deletion")
         else:
             delete_client = client
             logger.info("Using bot token for deletion")
         
-        # For admins without user token, show limitation message
-        if has_admin_perms and not user_client:
+        # For users without user token access, show limitation message
+        if not user_client:
             client.chat_postEphemeral(
                 channel=channel_id,
                 user=user_id,
-                text="⚠️ Admin detected but user token not configured. You can only delete your own messages and bot messages. See README for user token setup."
+                text="⚠️ User token not configured. Bot will attempt to delete messages but may be limited by Slack API permissions. See README for user token setup."
             )
         
         # Get messages from the time period
@@ -606,14 +599,14 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                 
                 # For each message, determine if we can delete it
                 if delete_client == user_client:
-                    # With user token, admins can delete any message
-                    can_delete_this = has_admin_perms
+                    # With user token, all users can delete any message
+                    can_delete_this = True
                     logger.info(f"---------msg_ts: {msg}---------")
-                    logger.info(f"Using user token - Admin perms: {has_admin_perms}")
+                    logger.info(f"Using user token - All users can delete any message")
                 else:
-                    # With bot token, only own messages and bot messages
-                    can_delete_this = (msg_author == user_id) or (msg.get("bot_id") is not None)
-                    logger.info(f"Using bot token - Can delete: {can_delete_this} (own: {msg_author == user_id}, bot: {msg.get('bot_id') is not None})")
+                    # With bot token, allow all users to try (bot will handle what it can delete)
+                    can_delete_this = True
+                    logger.info(f"Using bot token - Allowing deletion attempt (bot will handle permissions)")
                 
                 if not can_delete_this:
                     logger.info(f"Skipping message {msg_ts} - insufficient permissions to delete message from user {msg_author}")
@@ -641,9 +634,9 @@ def handle_remove_messages_command(ack, body, client, logger, command):
                             
                             # Check permissions for each message in the thread
                             if delete_client == user_client:
-                                can_delete_thread_msg = has_admin_perms
+                                can_delete_thread_msg = True
                             else:
-                                can_delete_thread_msg = (thread_msg_author == user_id) or (thread_msg.get("bot_id") is not None)
+                                can_delete_thread_msg = True
                             
                             if not can_delete_thread_msg:
                                 logger.info(f"Skipping thread message {thread_msg_ts} - insufficient permissions")
@@ -731,23 +724,17 @@ def handle_remove_messages_command(ack, body, client, logger, command):
             if successful_deletions == 0:
                 if skipped_deletions > 0:
                     display_time = format_time_period_for_display(command_text)
-                    if has_admin_perms and not user_client:
+                    if not user_client:
                         client.chat_postEphemeral(
                             channel=channel_id,
                             user=user_id,
-                            text=f"⚠️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but user token not configured. As an admin, you need a user token to delete messages from other users. See README for setup instructions."
-                        )
-                    elif not has_admin_perms:
-                        client.chat_postEphemeral(
-                            channel=channel_id,
-                            user=user_id,
-                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but you can only delete your own messages. Only workspace admins can delete messages from other users."
+                            text=f"⚠️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but user token not configured. Bot attempted deletion but was limited by Slack API permissions. See README for setup instructions."
                         )
                     else:
                         client.chat_postEphemeral(
                             channel=channel_id,
                             user=user_id,
-                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but you don't have permission to delete them."
+                            text=f"ℹ️ Found {total_processed} message{'s' if total_processed != 1 else ''} from the last {display_time}, but couldn't delete them due to API limitations."
                         )
                 else:
                     display_time = format_time_period_for_display(command_text)

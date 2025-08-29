@@ -264,8 +264,8 @@ Your app is now fully configured with all the same functionality as the manifest
 - ✅ **Current channel only** - operates on the channel where command is used
 
 **Permissions:**
-- **Admins**: Can remove any messages and replies from the time period
-- **Regular Users**: Can only remove their own messages and replies from the time period
+- **All Users**: Can attempt to remove any messages and replies from any user
+- **Note**: Actual deletion capability depends on Slack API permissions and token configuration
 
 **Getting Help:**
 Simply run `/remove-orphaned-messages` without any parameters to see the built-in help with examples and format options.
@@ -280,20 +280,17 @@ Mention the bot to see your current permissions:
 (The bot's display name is "Message Remover" as configured in the manifest)
 
 Response examples:
-- **Admin**: `Hello John! 👋 Your Status: Admin ⚡ Delete Permissions: You can delete messages from anyone!`
-- **User**: `Hello Jane! 👋 Your Status: Member 👤 Delete Permissions: You can only delete your own messages.`
+- **With User Token**: `Hello John! 👋 Your Status: Admin ⚡ Delete Permissions: You can delete messages from anyone!`
+- **Without User Token**: `Hello Jane! 👋 Your Status: Member 👤 Delete Permissions: You can delete messages from anyone! (Limited by Slack API permissions)`
 
 ## 🔧 Permission System
 
 ### Workspace Roles
 
-| Role | Can Delete Own Messages | Can Delete Others' Messages | Requirements |
-|------|------------------------|----------------------------|--------------|
-| **Primary Owner** 👑 | ✅ Yes | ✅ Yes | User token configured |
-| **Owner** 🔑 | ✅ Yes | ✅ Yes | User token configured |
-| **Admin** ⚡ | ✅ Yes | ✅ Yes | User token configured |
-| **Member** 👤 | ✅ Yes | ❌ No | - |
-| **Guest** 👥 | ✅ Yes | ❌ No | - |
+| User Type | Can Attempt Deletion | Actual Success Rate | Requirements |
+|-----------|---------------------|-------------------|--------------|
+| **Any Member** | ✅ Any message from anyone | Higher success rate | User token configured |
+| **Any Member** | ✅ Any message from anyone | Limited by Slack API | Bot token only |
 
 ### Technical Details
 
